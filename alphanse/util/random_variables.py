@@ -1,9 +1,8 @@
 # coding: utf-8
 
-import time
 import math
-import copy
 import numpy as np
+import copy
 import chainer
 import chainer.functions as F
 
@@ -18,10 +17,26 @@ def constant_variable(dim, value=0, batch=1):
         v = chainer.Variable(value * data, volatile='auto')
     return v
 
+def constant_parameter(dim, value=0, batch=1):
+    '''return chainre.Parameter
+    '''
+    data = np.ones([batch, dim]).astype(np.float32)
+    if 2 <= int(chainer.__version__.split('.')[0]):
+        p = chainer.Parameter(value * data)
+    else:
+        raise NotImplementedError()
+    return p
+
+def parameter(dim, value=0, batch=1):
+    '''return chainre.Parameter
+    '''
+    data = np.ones([batch, dim]).astype(np.float32)
+    v = chainer.Parameter(value * data)
+    return v
+
 def set_sample_number(distribution, N):
-    dist = copy.deepcopy(distribution)
-    dist.n_sample = N
-    return dist
+    distribution.n_sample = N
+    return distribution
     
 def one_hot(y, size=10):
     y_onehot = np.zeros((y.size, size), dtype=np.float32)
@@ -38,8 +53,8 @@ def gaussian_kl(q, p):
     """
     assert isinstance(q, Gaussian)
     assert isinstance(p, Gaussian)
-    mu1, ln_var1 = q.get_param()
-    mu2, ln_var2 = p.get_param()
+    mu1, ln_var1 = q.get_params()
+    mu2, ln_var2 = p.get_params()
     assert isinstance(mu1, chainer.Variable)
     assert isinstance(ln_var1, chainer.Variable)
     assert isinstance(mu2, chainer.Variable)
@@ -55,11 +70,25 @@ def gaussian_kl(q, p):
             + F.sum(ln_var2) - F.sum(ln_var1) - d) * 0.5
 
 # distribution
-class Distribution(object):
+class Distribution(chainer.Link):
     def __init__(self):
-        raise NotImplementedError()
+        super().__init__()
 
-    def get_param(self):
+    def __setattr__(self, name, value):
+        if isinstance(value, chainer.Parameter):
+            value.name = name
+            if not self._cpu:
+                value.to_gpu(self._device_id)
+            self._params.add(name)
+            self._persistent.discard(name)
+        super().__setattr__(name, value)
+
+    def __delattr__(self, name):
+        self._params.discard(name)
+        self._persistent.discard(name)
+        super().__delattr__(name)
+         
+    def get_params(self):
         raise NotImplementedError()
     
     def likelihood(self, x, reduce='sum'):
@@ -84,13 +113,13 @@ class Distribution(object):
             return F.sum(loss)
         else:
             return loss
-
-    def to_gpu(self, gpu):
-        for param in self.get_param():
-            param.to_gpu(gpu)
+                      
+    def to_gpu(self, device=None):
+        for param in self.get_params():
+            param.to_gpu(device)
             
     def to_cpu(self):
-        for param in self.get_param():
+        for param in self.get_params():
             param.to_cpu()
 
 class ContinuousDistribution(Distribution):
@@ -104,6 +133,7 @@ class DiscreteDistribution(Distribution):
 class Gaussian(ContinuousDistribution):
     def __init__(self, mu, ln_var, n_sample=1, clip=False,
                  clip_min=0.01, clip_max=10):
+        super().__init__()
         if clip:
             ln_clip_min = math.log(clip_min)
             ln_clip_max = math.log(clip_max)
@@ -112,7 +142,7 @@ class Gaussian(ContinuousDistribution):
         self.ln_var = ln_var
         self.n_sample = n_sample
         
-    def get_param(self):
+    def get_params(self):
         return (self.mu, self.ln_var)
     
     def log_likelihood(self, x, reduce='sum'):
@@ -130,10 +160,11 @@ class Gaussian(ContinuousDistribution):
 
 class Bernoulli(DiscreteDistribution):
     def __init__(self, mu_raw):
+        super().__init__()
         self.mu = F.sigmoid(mu_raw)
         self.mu_raw = mu_raw # hold mu_raw to reduce calculation error
 
-    def get_param(self):
+    def get_params(self):
         return (self.mu, self.mu_raw)
     
     def log_likelihood(self, x, reduce='sum'):
@@ -144,9 +175,10 @@ class Bernoulli(DiscreteDistribution):
         
 class Categorical(DiscreteDistribution):
     def __init__(self, p_raw):
+        super().__init__()
         self.p = F.softmax(p_raw)
 
-    def get_param(self):
+    def get_params(self):
         return (self.p)
     
     def log_likelihood(self, x, reduce='sum'):
