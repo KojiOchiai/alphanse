@@ -7,7 +7,7 @@ import chainer
 import chainer.functions as F
 
 
-def constant_variable(dim, value=0, batch=1):
+def variable(dim, value=0, batch=1):
     '''return chainre.Variable
     '''
     data = np.ones([batch, dim]).astype(np.float32)
@@ -17,7 +17,7 @@ def constant_variable(dim, value=0, batch=1):
         v = chainer.Variable(value * data, volatile='auto')
     return v
 
-def constant_parameter(dim, value=0, batch=1):
+def parameter(dim, value=0, batch=1):
     '''return chainre.Parameter
     '''
     data = np.ones([batch, dim]).astype(np.float32)
@@ -26,13 +26,6 @@ def constant_parameter(dim, value=0, batch=1):
     else:
         raise NotImplementedError()
     return p
-
-def parameter(dim, value=0, batch=1):
-    '''return chainre.Parameter
-    '''
-    data = np.ones([batch, dim]).astype(np.float32)
-    v = chainer.Parameter(value * data)
-    return v
 
 def set_sample_number(distribution, N):
     distribution.n_sample = N
