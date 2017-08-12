@@ -6,7 +6,7 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 from chainer import cuda
-import alphanse.util.random_variables as rv
+import varit.util.random_variables as rv
 
 
 class VCCA(chainer.Chain):
