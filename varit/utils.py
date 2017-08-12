@@ -6,7 +6,7 @@ import copy
 import chainer
 import chainer.functions as F
 
-# utility functions
+
 def constant_variable(dim, value=0, batch=1):
     '''return chainre.Variable
     '''
