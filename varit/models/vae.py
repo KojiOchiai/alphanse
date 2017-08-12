@@ -29,15 +29,10 @@ class VAE(chainer.Chain):
         # loss function
         batchsize = len(x.data)
         qz = self.qzgx(x)
-        
-        rec_loss = 0
-        for l in range(sample):
-            z = qz.sample()
-            x_nll = self.pxgz(z).nll(x)
-            rec_loss += x_nll / (sample * batchsize)
-            
+        llf = rv.LogLikelihood(self.pxgz, x)
+        rec_loss = rv.expectation(qz, llf, sample) / batchsize            
         kl_loss = rv.gaussian_kl_standard(qz) / batchsize
-        loss = rec_loss + C * kl_loss
+        loss = -(rec_loss - C * kl_loss)
         return loss
 
 

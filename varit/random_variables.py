@@ -38,6 +38,16 @@ def gaussian_kl(q, p):
     return (F.sum((mu1-mu2)*(mu1-mu2)/var2) + F.sum(var1/var2)
             + F.sum(ln_var2) - F.sum(ln_var1) - d) * 0.5
 
+def expectation(density, func=None, sample=1):
+    func = func or (lambda x:x)
+    expected_value = 0
+    for l in range(sample):
+        z = density.sample()
+        value = func(z)
+        expected_value += value / sample
+    return expected_value
+
+
 # distributions
 class Distribution(chainer.Link):
     def __init__(self):
@@ -156,6 +166,22 @@ class Categorical(DiscreteDistribution):
         loss = x*F.log(p)
         return self.reduce(loss, reduce)
 
+class Concat(Distribution):
+    def __init__(self, dists):
+        self.dists = dists
+
+    def get_params(self):
+        param_list = [p.get_params() for p in self.dists]
+        return [item for sublist in param_list for item in sublist]
+
+    def log_likelihood(self, x_list):
+        return sum([self.dists[i].log_likelihood(x_list[i])
+                    for i in range(len(x_list))])
+
+    def sample(self, n_sample=None):
+        return F.concat([dist.sample(n_sample) for dist in self.dists])
+
+        
 # conditional distribution
 class ConditionalDistribution(chainer.Chain):
     def __init__(self, model):
@@ -187,3 +213,14 @@ class ConditionalCategorical(ConditionalDistribution):
     def __call__(self, x):
         p = self.model(x)
         return Categorical(p)
+
+# likelihood
+class LogLikelihood:
+    def __init__(self, distribution, observed):
+        assert isinstance(distribution, ConditionalDistribution)
+        self.distribution = distribution
+        self.observed = observed
+
+    def __call__(self, condition):
+        return self.distribution(condition).log_likelihood(self.observed)
+    
