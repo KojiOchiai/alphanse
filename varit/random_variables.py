@@ -48,7 +48,10 @@ def expectation(density, func=None, sample=1):
         expected_value += sum([f(z) for f in func])
     return expected_value / sample
 
-
+def entropy(distribution, sample=1):
+    return - expectation(distribution,
+                         distribution.log_likelihood, sample)
+    
 # distributions
 class Distribution(chainer.Link):
     def __init__(self):
