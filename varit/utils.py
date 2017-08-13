@@ -27,8 +27,8 @@ def parameter(dim, value=0, batch=1):
         raise NotImplementedError()
     return p
 
-def one_hot(y, size=10):
-    y_onehot = np.zeros((y.size, size), dtype=np.float32)
+def one_hot(y, dim=10):
+    y_onehot = np.zeros((y.size, dim), dtype=np.float32)
     y_onehot[np.arange(y.size), y] = 1
     return y_onehot
 
