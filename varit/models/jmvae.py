@@ -58,19 +58,10 @@ class JMVAE(chainer.Chain):
         else:
             raise ValueError('x or y must be geven')
 
-        rec_loss = 0
-        for l in range(sample):
-            z = qz.sample()
-
-            nll = 0
-            if x is not None:
-                nll += self.pxgz(z).nll(x)
-            if y is not None:
-                nll += self.pygz(z).nll(y)
-            
-            rec_loss += nll / (sample * batchsize)
-            
+        llf_x = rv.LogLikelihood(self.pxgz, x)
+        llf_y = rv.LogLikelihood(self.pygz, y)
+        rec_loss = rv.expectation(qz, [llf_x, llf_y], sample) / batchsize
         kl_loss = rv.gaussian_kl_standard(qz) / batchsize
-        loss = rec_loss + C * kl_loss
+        loss = -(rec_loss - C * kl_loss)
         return loss
 

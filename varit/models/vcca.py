@@ -54,22 +54,18 @@ class VCCA(chainer.Chain):
         if share_source == 'y':
             qzshare = self.qzgy(y)
         qzy = self.qzygy(y)
-        
-        rec_loss = 0
-        for l in range(sample):
-            z_x = qzx.sample()
-            z_share = qzshare.sample()
-            z_y = qzy.sample()
-            
-            x_nll = self.pxgzxz(F.concat([z_x, z_share])).nll(x)
-            y_nll = self.pygzyz(F.concat([z_y, z_share])).nll(y)
-            
-            rec_loss += (x_nll + y_nll) / (sample * batchsize)
-            
+        qzxz = rv.Concat([qzx, qzshare])
+        qzyz = rv.Concat([qzy, qzshare])
+
+        llf_x = rv.LogLikelihood(self.pxgzxz, x)
+        llf_y = rv.LogLikelihood(self.pygzyz, y)
+
+        rec_loss = (rv.expectation(qzxz, llf_x, sample)
+                    + rv.expectation(qzyz, llf_y, sample)) / batchsize
         kl_loss = (rv.gaussian_kl_standard(qzx)
                   + rv.gaussian_kl_standard(qzshare)
                   + rv.gaussian_kl_standard(qzy)) / batchsize
-        loss = rec_loss + C * kl_loss
+        loss = -(rec_loss - C * kl_loss)
         return loss, qzshare
 
     def bi_lower_bound(self, x, y, weight=0.5, C=1.0, sample=1):
@@ -81,7 +77,8 @@ class VCCA(chainer.Chain):
         loss = weight * lbx + (1 - weight) * lby
         return loss
 
-    def bi_lower_bound_kl(self, x, y, weight=0.5, C=1.0, kl_weight=0.001, sample=1):
+    def bi_lower_bound_kl(self, x, y, weight=0.5, C=1.0,
+                          kl_weight=0.001, sample=1):
         # loss function
         lbx, qzgx = self.lower_bound(x, y, share_source='x',
                                      C=C, sample=sample)
