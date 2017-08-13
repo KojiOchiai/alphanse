@@ -51,16 +51,17 @@ class JMVAE(chainer.Chain):
         
     def free_energy(self, qz, x=None, y=None, C=1.0, sample=1):
         # loss function
+        llf = []
         if x is not None:
             batchsize = len(x.data)
+            llf.append(rv.LogLikelihood(self.pxgz, x))
         elif y is not None:
             batchsize = len(y.data)
+            llf.append(rv.LogLikelihood(self.pygz, y))
         else:
             raise ValueError('x or y must be geven')
 
-        llf_x = rv.LogLikelihood(self.pxgz, x)
-        llf_y = rv.LogLikelihood(self.pygz, y)
-        rec_loss = rv.expectation(qz, [llf_x, llf_y], sample) / batchsize
+        rec_loss = rv.expectation(qz, llf, sample) / batchsize
         kl_loss = rv.gaussian_kl_standard(qz) / batchsize
         loss = -(rec_loss - C * kl_loss)
         return loss
