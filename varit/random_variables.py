@@ -40,12 +40,13 @@ def gaussian_kl(q, p):
 
 def expectation(density, func=None, sample=1):
     func = func or (lambda x:x)
+    if not isinstance(func, list):
+        func = [func]
     expected_value = 0
     for l in range(sample):
         z = density.sample()
-        value = func(z)
-        expected_value += value / sample
-    return expected_value
+        expected_value += sum([f(z) for f in func])
+    return expected_value / sample
 
 
 # distributions
