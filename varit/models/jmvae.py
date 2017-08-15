@@ -43,7 +43,7 @@ class JMVAE(chainer.Chain):
         qzgx = self.qzgx(x)
         qzgy = self.qzgy(y)
         modal_loss = rv.Dkl(qz, qzgx) + rv.Dkl(qz, qzgy)
-        return vae_loss + alpha * modal_loss    
+        return vae_loss + alpha * modal_loss
         
     def free_energy(self, qz, x=None, y=None, C=1.0, sample=1):
         # loss function
@@ -51,10 +51,10 @@ class JMVAE(chainer.Chain):
         if x is not None:
             batchsize = len(x.data)
             llf.append(rv.LogLikelihood(self.pxgz, x))
-        elif y is not None:
+        if y is not None:
             batchsize = len(y.data)
             llf.append(rv.LogLikelihood(self.pygz, y))
-        else:
+        if (x is None) and (y is None):
             raise ValueError('x or y must be geven')
 
         rec_loss = rv.expectation(qz, llf, sample) / batchsize
