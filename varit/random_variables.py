@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import math
+import numpy as np
 import chainer
 import chainer.functions as F
 
@@ -156,6 +157,11 @@ class Bernoulli(DiscreteDistribution):
         # loss = x*F.log(self.mu) + (1 - x)*F.log(1 - self.mu)
         loss = - F.softplus(self.mu_raw) + x * self.mu_raw
         return self.reduce(loss, reduce)
+
+    def kl(self, p):
+        assert isinstance(p, Bernoulli)
+        return (self.mu * F.log(self.mu / p.mu)
+               + (1 - self.mu) * F.log((1 - self.mu) / (1 - p.mu)))
         
 class Categorical(DiscreteDistribution):
     def __init__(self, p_raw):
@@ -170,6 +176,13 @@ class Categorical(DiscreteDistribution):
         p = self.p + 1e-7 # prevent zero
         loss = x*F.log(p)
         return self.reduce(loss, reduce)
+
+    def kl(self, p):
+        assert isinstance(p, Categorical)
+        assert len(self.p) == len(p.p)
+        assert np.all(0 < self.p.data)
+        assert np.all(0 < p.p.data)
+        return F.sum(self.p * F.log(self.p / p.p))
 
 class Concat(Distribution):
     def __init__(self, dists):
