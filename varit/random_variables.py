@@ -36,8 +36,7 @@ def gaussian_kl(q, p):
     return (F.sum((mu1-mu2)*(mu1-mu2)/var2) + F.sum(var1/var2)
             + F.sum(ln_var2) - F.sum(ln_var1) - d) * 0.5
 
-def expectation(density, func=None, sample=1):
-    func = func or (lambda x:x)
+def expectation(density, func=(lambda x:x), sample=1):
     if not isinstance(func, list):
         func = [func]
     expected_value = 0
