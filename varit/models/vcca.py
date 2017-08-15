@@ -4,8 +4,6 @@ import numpy as np
 from scipy.misc import logsumexp
 import chainer
 import chainer.functions as F
-import chainer.links as L
-from chainer import cuda
 import varit.random_variables as rv
 
 
