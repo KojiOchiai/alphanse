@@ -1,8 +1,6 @@
 # coding: utf-8
 
 import math
-import numpy as np
-import copy
 import chainer
 import chainer.functions as F
 
