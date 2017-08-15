@@ -160,8 +160,8 @@ class Bernoulli(DiscreteDistribution):
 
     def kl(self, p):
         assert isinstance(p, Bernoulli)
-        return (self.mu * F.log(self.mu / p.mu)
-               + (1 - self.mu) * F.log((1 - self.mu) / (1 - p.mu)))
+        return F.sum(self.mu * F.log(self.mu / p.mu)
+                     + (1 - self.mu) * F.log((1 - self.mu) / (1 - p.mu)))
         
 class Categorical(DiscreteDistribution):
     def __init__(self, p_raw):
