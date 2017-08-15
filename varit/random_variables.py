@@ -12,7 +12,11 @@ def set_sample_number(distribution, N):
     return distribution
     
 def gaussian_kl_standard(q):
-    return F.gaussian_kl_divergence(q.mu, q.ln_var)
+    # Dkl(q, N(0, 1))
+    mu, ln_var = q.get_params()
+    var = F.exp(ln_var)
+    return (F.sum((mu*mu)/var2) + F.sum(var1/var2)
+                + F.sum(ln_var2) - F.sum(ln_var1) - d) * 0.5
 
 def Dkl(q, p):
     return q.kl(p)
