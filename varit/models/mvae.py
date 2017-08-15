@@ -47,4 +47,3 @@ class MVAE(chainer.Chain):
         kl_loss = rv.gaussian_kl_standard(qz) / batchsize
         loss = -(rec_loss - C * kl_loss)
         return loss
-
