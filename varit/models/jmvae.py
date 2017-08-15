@@ -42,7 +42,7 @@ class JMVAE(chainer.Chain):
         vae_loss = self.free_energy(qz, x, y, C=C, sample=sample)
         qzgx = self.qzgx(x)
         qzgy = self.qzgy(y)
-        modal_loss = rv.gaussian_kl(qz, qzgx) + rv.gaussian_kl(qz, qzgy)
+        modal_loss = rv.Dkl(qz, qzgx) + rv.Dkl(qz, qzgy)
         return vae_loss + alpha * modal_loss    
         
     def free_energy(self, qz, x=None, y=None, C=1.0, sample=1):

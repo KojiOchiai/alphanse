@@ -13,28 +13,8 @@ def set_sample_number(distribution, N):
 def gaussian_kl_standard(q):
     return F.gaussian_kl_divergence(q.mu, q.ln_var)
 
-def gaussian_kl(q, p):
-    """Calculate KL-divergence between given two gaussian.
-    D_{KL}(P||Q)=\frac{1}{2}\Bigl[(\mu_1-\mu_2)^T\Sigma_2^{-1}(\mu_1-\mu_2) + tr\bigl\{\Sigma_2^{-1}\Sigma_1 \bigr\} 
-    + \log\frac{|\Sigma_2|}{|\Sigma_1|} - d \Bigr]
-    """
-    assert isinstance(q, Gaussian)
-    assert isinstance(p, Gaussian)
-    mu1, ln_var1 = q.get_params()
-    mu2, ln_var2 = p.get_params()
-    assert isinstance(mu1, chainer.Variable)
-    assert isinstance(ln_var1, chainer.Variable)
-    assert isinstance(mu2, chainer.Variable)
-    assert isinstance(ln_var2, chainer.Variable)
-    assert mu1.data.size == mu2.data.size
-    assert ln_var1.data.size == ln_var2.data.size
-    assert mu1.data.size == ln_var1.data.size
-    
-    d = mu1.size
-    var1 = F.exp(ln_var1)
-    var2 = F.exp(ln_var2)
-    return (F.sum((mu1-mu2)*(mu1-mu2)/var2) + F.sum(var1/var2)
-            + F.sum(ln_var2) - F.sum(ln_var1) - d) * 0.5
+def Dkl(q, p):
+    return q.kl(p)
 
 def expectation(density, func=(lambda x:x), sample=1):
     if not isinstance(func, list):
@@ -79,6 +59,9 @@ class Distribution(chainer.Link):
 
     def nll(self, x, reduce='sum'):
         return -self.log_likelihood(x, reduce=reduce)
+
+    def kl(self, p):
+        raise NotImplementedError()
 
     def check_reduce(self, reduce):
         if reduce not in ('sum', 'no'):
@@ -132,7 +115,28 @@ class Gaussian(ContinuousDistribution):
         x_power = (x_diff * x_diff) * x_prec * -0.5
         loss = - (self.ln_var + math.log(2 * math.pi)) / 2 + x_power
         return self.reduce(loss, reduce)
-    
+
+    def kl(self, p):
+        """Calculate KL-divergence between given two gaussian.
+        D_{KL}(P||Q)=\frac{1}{2}\Bigl[(\mu_1-\mu_2)^T\Sigma_2^{-1}(\mu_1-\mu_2)
+        + tr\bigl\{\Sigma_2^{-1}\Sigma_1 \bigr\} 
+        + \log\frac{|\Sigma_2|}{|\Sigma_1|} - d \Bigr]
+        """
+        assert isinstance(p, Gaussian)
+        mu1, ln_var1 = self.get_params()
+        mu2, ln_var2 = p.get_params()
+        assert isinstance(mu2, chainer.Variable)
+        assert isinstance(ln_var2, chainer.Variable)
+        assert mu1.data.size == mu2.data.size
+        assert ln_var1.data.size == ln_var2.data.size
+        
+        d = mu1.size
+        var1 = F.exp(ln_var1)
+        var2 = F.exp(ln_var2)
+        return (F.sum((mu1-mu2)*(mu1-mu2)/var2) + F.sum(var1/var2)
+                + F.sum(ln_var2) - F.sum(ln_var1) - d) * 0.5
+
+
     def sample(self, n_sample=None):
         N = n_sample or self.n_sample
         return F.gaussian(F.tile(self.mu, (N, 1)),
