@@ -22,12 +22,10 @@ def Dkl(q, p):
     return q.kl(p)
 
 def expectation(density, func=(lambda x:x), sample=1):
-    if not isinstance(func, list):
-        func = [func]
     expected_value = 0
     for l in range(sample):
         z = density.sample()
-        expected_value += sum([f(z) for f in func])
+        expected_value += func(z)
     return expected_value / sample
 
 def entropy(distribution, sample=1):
