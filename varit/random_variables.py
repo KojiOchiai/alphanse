@@ -7,32 +7,39 @@ import chainer.functions as F
 
 
 # functions for distributions
+
 def set_sample_number(distribution, N):
     distribution.n_sample = N
     return distribution
-    
+
+
 def gaussian_kl_standard(q):
     # Dkl(q, N(0, 1))
     assert isinstance(q, Gaussian)
     mu, ln_var = q.get_params()
     var = F.exp(ln_var)
-    return F.sum(mu*mu + var - ln_var - 1) * 0.5
+    return F.sum(mu * mu + var - ln_var - 1) * 0.5
+
 
 def Dkl(q, p):
     return q.kl(p)
 
-def expectation(density, func=(lambda x:x), sample=1):
+
+def expectation(density, func=(lambda x: x), sample=1):
     expected_value = 0
     for l in range(sample):
         z = density.sample()
         expected_value += func(z)
     return expected_value / sample
 
+
 def entropy(distribution, sample=1):
     return - expectation(distribution,
                          distribution.log_likelihood, sample)
-    
+
+
 # distributions
+
 class Distribution(chainer.Link):
     def __init__(self):
         super().__init__()
@@ -50,10 +57,10 @@ class Distribution(chainer.Link):
         self._params.discard(name)
         self._persistent.discard(name)
         super().__delattr__(name)
-         
+
     def get_params(self):
         raise NotImplementedError()
-    
+
     def likelihood(self, x, reduce='sum'):
         return F.exp(self.log_likelihood(x, reduce=reduce))
 
@@ -79,22 +86,25 @@ class Distribution(chainer.Link):
             return F.sum(loss)
         else:
             return loss
-                      
+
     def to_gpu(self, device=None):
         for param in self.get_params():
             param.to_gpu(device)
-            
+
     def to_cpu(self):
         for param in self.get_params():
             param.to_cpu()
 
+
 class ContinuousDistribution(Distribution):
     def __init__(self):
         super().__init__()
-    
+
+
 class DiscreteDistribution(Distribution):
     def __init__(self):
         super().__init__()
+
 
 class Gaussian(ContinuousDistribution):
     def __init__(self, mu, ln_var, n_sample=1, clip=False,
@@ -107,10 +117,10 @@ class Gaussian(ContinuousDistribution):
         self.mu = mu
         self.ln_var = ln_var
         self.n_sample = n_sample
-        
+
     def get_params(self):
         return (self.mu, self.ln_var)
-    
+
     def log_likelihood(self, x, reduce='sum'):
         self.check_reduce(reduce)
         x_prec = F.exp(-self.ln_var)
@@ -132,28 +142,28 @@ class Gaussian(ContinuousDistribution):
         assert isinstance(ln_var2, chainer.Variable)
         assert mu1.data.size == mu2.data.size
         assert ln_var1.data.size == ln_var2.data.size
-        
+
         d = mu1.size
         var1 = F.exp(ln_var1)
         var2 = F.exp(ln_var2)
-        return (F.sum((mu1-mu2)*(mu1-mu2)/var2) + F.sum(var1/var2)
+        return (F.sum((mu1 - mu2) * (mu1 - mu2) / var2) + F.sum(var1 / var2)
                 + F.sum(ln_var2) - F.sum(ln_var1) - d) * 0.5
-
 
     def sample(self, n_sample=None):
         N = n_sample or self.n_sample
         return F.gaussian(F.tile(self.mu, (N, 1)),
                           F.tile(self.ln_var, (N, 1)))
 
+
 class Bernoulli(DiscreteDistribution):
     def __init__(self, mu_raw):
         super().__init__()
         self.mu = F.sigmoid(mu_raw)
-        self.mu_raw = mu_raw # hold mu_raw to reduce calculation error
+        self.mu_raw = mu_raw  # hold mu_raw to reduce calculation error
 
     def get_params(self):
         return (self.mu, self.mu_raw)
-    
+
     def log_likelihood(self, x, reduce='sum'):
         self.check_reduce(reduce)
         # loss = x*F.log(self.mu) + (1 - x)*F.log(1 - self.mu)
@@ -164,7 +174,8 @@ class Bernoulli(DiscreteDistribution):
         assert isinstance(p, Bernoulli)
         return F.sum(self.mu * F.log(self.mu / p.mu)
                      + (1 - self.mu) * F.log((1 - self.mu) / (1 - p.mu)))
-        
+
+
 class Categorical(DiscreteDistribution):
     def __init__(self, p_raw):
         super().__init__()
@@ -172,11 +183,11 @@ class Categorical(DiscreteDistribution):
 
     def get_params(self):
         return (self.p)
-    
+
     def log_likelihood(self, x, reduce='sum'):
-        self.check_reduce(reduce)        
-        p = self.p + 1e-7 # prevent zero
-        loss = x*F.log(p)
+        self.check_reduce(reduce)
+        p = self.p + 1e-7  # prevent zero
+        loss = x * F.log(p)
         return self.reduce(loss, reduce)
 
     def kl(self, p):
@@ -185,6 +196,7 @@ class Categorical(DiscreteDistribution):
         assert np.all(0 < self.p.data)
         assert np.all(0 < p.p.data)
         return F.sum(self.p * F.log(self.p / p.p))
+
 
 class Concat(Distribution):
     def __init__(self, dists):
@@ -201,8 +213,9 @@ class Concat(Distribution):
     def sample(self, n_sample=None):
         return F.concat([dist.sample(n_sample) for dist in self.dists])
 
-        
+
 # conditional distribution
+
 class ConditionalDistribution(chainer.Chain):
     def __init__(self, model):
         super().__init__(
@@ -211,6 +224,7 @@ class ConditionalDistribution(chainer.Chain):
 
     def __call__(self, x):
         raise NotImplementedError()
+
 
 class ConditionalGaussian(ConditionalDistribution):
     def __init__(self, model, clip=False, clip_min=0.01, clip_max=10):
@@ -224,17 +238,21 @@ class ConditionalGaussian(ConditionalDistribution):
         return Gaussian(mu, ln_var, clip=self.clip,
                         clip_min=self.clip_min, clip_max=self.clip_max)
 
+
 class ConditionalBernoulli(ConditionalDistribution):
     def __call__(self, x):
         mu_raw = self.model(x)
         return Bernoulli(mu_raw)
+
 
 class ConditionalCategorical(ConditionalDistribution):
     def __call__(self, x):
         p = self.model(x)
         return Categorical(p)
 
+
 # likelihood
+
 class LogLikelihood:
     def __init__(self, distribution, observed):
         assert isinstance(distribution, ConditionalDistribution)
@@ -243,4 +261,3 @@ class LogLikelihood:
 
     def __call__(self, condition):
         return self.distribution(condition).log_likelihood(self.observed)
-    

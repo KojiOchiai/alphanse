@@ -11,7 +11,7 @@ class AE(chainer.Chain):
             decoder=decoder,
         )
         self.loss_func = loss_func
-    
+
     def reconstract(self, x):
         h = self.encoder(x)
         x_hat = self.decoder(h)

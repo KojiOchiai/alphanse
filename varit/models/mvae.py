@@ -12,11 +12,11 @@ class MVAE(chainer.Chain):
             pxgz=pxgz,
             pygz=pygz,
         )
-    
+
     def reconstract_multiple(self, x, y, sample=False):
         pz = self.qzgxy(F.concat([x, y]))
         return self.generate(pz, sample)
-                        
+
     def generate(self, pz, sample=False):
         if sample:
             z = pz.sample()
@@ -42,7 +42,8 @@ class MVAE(chainer.Chain):
             llf.append(rv.LogLikelihood(self.pygz, y))
         if (x is None) and (y is None):
             raise ValueError('x or y must be geven')
-        func = lambda z: sum([f(z) for f in llf])
+
+        def func(z): return sum([f(z) for f in llf])
 
         rec_loss = rv.expectation(qz, func, sample) / batchsize
         kl_loss = rv.gaussian_kl_standard(qz) / batchsize

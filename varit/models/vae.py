@@ -1,7 +1,6 @@
 # coding: utf-8
 
 import chainer
-import chainer.functions as F
 import varit.random_variables as rv
 
 
@@ -11,7 +10,7 @@ class VAE(chainer.Chain):
             qzgx=qzgx,
             pxgz=pxgz,
         )
-    
+
     def reconstract(self, x, sample=False):
         pz = self.qzgx(x)
         if sample:
@@ -26,7 +25,7 @@ class VAE(chainer.Chain):
         batchsize = len(x.data)
         qz = self.qzgx(x)
         llf = rv.LogLikelihood(self.pxgz, x)
-        rec_loss = rv.expectation(qz, llf, sample) / batchsize            
+        rec_loss = rv.expectation(qz, llf, sample) / batchsize
         kl_loss = rv.gaussian_kl_standard(qz) / batchsize
         loss = -(rec_loss - C * kl_loss)
         return loss

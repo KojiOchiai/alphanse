@@ -1,10 +1,7 @@
 # coding: utf-8
 
-import math
 import numpy as np
-import copy
 import chainer
-import chainer.functions as F
 
 
 def variable(dim, value=0, batch=1):
@@ -17,6 +14,7 @@ def variable(dim, value=0, batch=1):
         v = chainer.Variable(value * data, volatile='auto')
     return v
 
+
 def parameter(dim, value=0, batch=1):
     '''return chainre.Parameter
     '''
@@ -27,8 +25,8 @@ def parameter(dim, value=0, batch=1):
         raise NotImplementedError()
     return p
 
+
 def one_hot(y, dim=10):
     y_onehot = np.zeros((y.size, dim), dtype=np.float32)
     y_onehot[np.arange(y.size), y] = 1
     return y_onehot
-
