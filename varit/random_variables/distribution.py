@@ -34,6 +34,8 @@ def expectation(density, func=(lambda x: x), sample=1):
 
 
 def entropy(distribution, sample=1):
+    if hasattr(distribution, 'entropy'):
+        return distribution.entropy()
     return - expectation(distribution,
                          distribution.log_likelihood, sample)
 
@@ -132,7 +134,7 @@ class Gaussian(ContinuousDistribution):
     def kl(self, p):
         """Calculate KL-divergence between given two gaussian.
         D_{KL}(P||Q)=\frac{1}{2}\Bigl[(\mu_1-\mu_2)^T\Sigma_2^{-1}(\mu_1-\mu_2)
-        + tr\bigl\{\Sigma_2^{-1}\Sigma_1 \bigr\} 
+        + tr\bigl\{\Sigma_2^{-1}\Sigma_1 \bigr\}
         + \log\frac{|\Sigma_2|}{|\Sigma_1|} - d \Bigr]
         """
         assert isinstance(p, Gaussian)
@@ -148,6 +150,11 @@ class Gaussian(ContinuousDistribution):
         var2 = F.exp(ln_var2)
         return (F.sum((mu1 - mu2) * (mu1 - mu2) / var2) + F.sum(var1 / var2)
                 + F.sum(ln_var2) - F.sum(ln_var1) - d) * 0.5
+
+    def entropy(self):
+        batch, dim = self.ln_var.shape
+        return (F.sum(self.ln_var)
+                + np.log(2 * np.pi * np.e) * 0.5 * dim * batch)
 
     def sample(self, n_sample=None):
         N = n_sample or self.n_sample
@@ -175,6 +182,10 @@ class Bernoulli(DiscreteDistribution):
         return F.sum(self.mu * F.log(self.mu / p.mu)
                      + (1 - self.mu) * F.log((1 - self.mu) / (1 - p.mu)))
 
+    def entropy(self):
+        return -F.sum(self.mu * F.log(self.mu)
+                      + (1 - self.mu) * F.log((1 - self.mu)))
+
 
 class Categorical(DiscreteDistribution):
     def __init__(self, p_raw):
@@ -196,6 +207,10 @@ class Categorical(DiscreteDistribution):
         assert np.all(0 < self.p.data)
         assert np.all(0 < p.p.data)
         return F.sum(self.p * F.log(self.p / p.p))
+
+    def entropy(self):
+        assert np.all(0 < self.p.data)
+        return -F.sum(self.p * F.log(self.p))
 
 
 class Concat(Distribution):
