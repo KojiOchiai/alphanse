@@ -4,6 +4,7 @@ import math
 import numpy as np
 import chainer
 import chainer.functions as F
+from . import sampling
 
 
 # functions for distributions
@@ -34,6 +35,7 @@ def expectation(density, func=(lambda x: x), sample=1):
 
 
 def entropy(distribution, sample=1):
+    assert isinstance(distribution, Distribution)
     if hasattr(distribution, 'entropy'):
         return distribution.entropy()
     return - expectation(distribution,
@@ -158,8 +160,8 @@ class Gaussian(ContinuousDistribution):
 
     def sample(self, n_sample=None):
         N = n_sample or self.n_sample
-        return F.gaussian(F.tile(self.mu, (N, 1)),
-                          F.tile(self.ln_var, (N, 1)))
+        return sampling.gaussian(F.tile(self.mu, (N, 1)),
+                                 F.tile(self.ln_var, (N, 1)))
 
 
 class Bernoulli(DiscreteDistribution):
