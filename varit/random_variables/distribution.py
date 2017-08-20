@@ -100,17 +100,7 @@ class Distribution(chainer.Link):
             param.to_cpu()
 
 
-class ContinuousDistribution(Distribution):
-    def __init__(self):
-        super().__init__()
-
-
-class DiscreteDistribution(Distribution):
-    def __init__(self):
-        super().__init__()
-
-
-class Gaussian(ContinuousDistribution):
+class Gaussian(Distribution):
     def __init__(self, mu, ln_var, n_sample=1, clip=False,
                  clip_min=0.01, clip_max=10):
         super().__init__()
@@ -164,7 +154,7 @@ class Gaussian(ContinuousDistribution):
                                  F.tile(self.ln_var, (N, 1)))
 
 
-class Bernoulli(DiscreteDistribution):
+class Bernoulli(Distribution):
     def __init__(self, mu_raw):
         super().__init__()
         self.mu = F.sigmoid(mu_raw)
@@ -189,7 +179,7 @@ class Bernoulli(DiscreteDistribution):
                       + (1 - self.mu) * F.log((1 - self.mu)))
 
 
-class Categorical(DiscreteDistribution):
+class Categorical(Distribution):
     def __init__(self, p_raw):
         super().__init__()
         self.p = F.softmax(p_raw)
